@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# ユーザ管理画面のルートコントローラっぽい
 class HomeController < ApplicationController
   before_action :authenticate_user!
   before_action :set_referrer_policy_header
@@ -11,6 +12,7 @@ class HomeController < ApplicationController
 
   private
 
+  # ログインしているか。ApplicationControllerでやらないのはログイン必須ではないページがあるため
   def authenticate_user!
     return if user_signed_in?
 
@@ -36,6 +38,7 @@ class HomeController < ApplicationController
     end
 
     matches = request.path.match(%r{\A/web/timelines/tag/(?<tag>.+)\z})
+    binding.pry
     redirect_to(matches ? tag_path(CGI.unescape(matches[:tag])) : default_redirect_path)
   end
 
@@ -54,12 +57,14 @@ class HomeController < ApplicationController
     }
   end
 
+  # 未ログイン時などのデフォルトパスを返す
   def default_redirect_path
     if request.path.start_with?('/web')
       new_user_session_path
     elsif single_user_mode?
       short_account_path(Account.first)
     else
+      # アバウト画面
       about_path
     end
   end

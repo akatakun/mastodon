@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# エラーのキャッチ。レンダリング。OAuth2認証。ページングなど
 class Api::BaseController < ApplicationController
   DEFAULT_STATUSES_LIMIT = 20
   DEFAULT_ACCOUNTS_LIMIT = 40

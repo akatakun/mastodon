@@ -3,30 +3,43 @@
 require 'sidekiq/web'
 require 'sidekiq-scheduler/web'
 
+# Sidekiqの管理画面の問題をなんとかする(https://qiita.com/shouta-dev/items/7d56b8424cf0a0458657)
 Sidekiq::Web.set :session_secret, Rails.application.secrets[:secret_key_base]
 
 Rails.application.routes.draw do
+  # ブラウザ上で送信したメールを確認するためのエンジン
   mount LetterOpenerWeb::Engine, at: 'letter_opener' if Rails.env.development?
 
+  # ログイン済みかつ、アドミンユーザのみのルーティング
+  # https://qiita.com/hirokishirai/items/ca4f9e13610753f74a25
   authenticate :user, lambda { |u| u.admin? } do
+    # Sidekiqの管理画面
     mount Sidekiq::Web, at: 'sidekiq', as: :sidekiq
+    # Postgresのパフォーマンスダッシュボード(https://github.com/ankane/pghero)
     mount PgHero::Engine, at: 'pghero', as: :pghero
   end
 
+  # doorkeeper: OAuth2プロバイダの実装。API認可に使用
+  # /oauth/*が追加される
   use_doorkeeper do
     controllers authorizations: 'oauth/authorizations', authorized_applications: 'oauth/authorized_applications'
   end
 
+  # 隠しパス。GNU social, OStatusか何かの仕様で他のインスタンスと連携するためのデータを返す？
   get '.well-known/host-meta', to: 'well_known/host_meta#show', as: :host_meta, defaults: { format: 'xml' }
   get '.well-known/webfinger', to: 'well_known/webfinger#show', as: :webfinger
+  # これもインスタンスデータみたいなものを返している
   get 'manifest', to: 'manifests#show', defaults: { format: 'json' }
+  # これも。uriパラメータで何かしてる
   get 'intent', to: 'intents#show'
 
+  # Device周りのパス？
   devise_scope :user do
     get '/invite/:invite_code', to: 'auth/registrations#new', as: :public_invite
     match '/auth/finish_signup' => 'auth/confirmations#finish_signup', via: [:get, :patch], as: :finish_signup
   end
 
+  # Device周りのパス？
   devise_for :users, path: 'auth', controllers: {
     omniauth_callbacks: 'auth/omniauth_callbacks',
     sessions:           'auth/sessions',
@@ -35,8 +48,10 @@ Rails.application.routes.draw do
     confirmations:      'auth/confirmations',
   }
 
+  # constraints: ルーティングに制約をつけるためのオプション
   get '/users/:username', to: redirect('/@%{username}'), constraints: lambda { |req| req.format.nil? || req.format.html? }
 
+  # アカウントのホーム
   resources :accounts, path: 'users', only: [:show], param: :username do
     resources :stream_entries, path: 'updates', only: [:show] do
       member do
@@ -194,21 +209,24 @@ Rails.application.routes.draw do
     get '/admin', to: redirect('/admin/reports', status: 302)
   end
 
+  # APIのホーム
   namespace :api do
-    # PubSubHubbub outgoing subscriptions
+    # PubSubHubbub incoming subscriptions(他のインスタンスとのやり取り？)
     resources :subscriptions, only: [:show]
     post '/subscriptions/:id', to: 'subscriptions#update'
 
-    # PubSubHubbub incoming subscriptions
+    # PubSubHubbub incoming subscriptions(他のインスタンスとのやり取り？)
     post '/push', to: 'push#update', as: :push
 
-    # Salmon
+    # Salmon: 記事にコメントを付けたりするためのプロトコル
+    # Mastodonでは返信
     post '/salmon/:id', to: 'salmon#update', as: :salmon
 
-    # OEmbed
+    # OEmbed: 埋め込み用コードを取得するためのプロトコル
     get '/oembed', to: 'oembed#show', as: :oembed
 
     # JSON / REST API
+    # マジAPI
     namespace :v1 do
       resources :statuses, only: [:create, :show, :destroy] do
         scope module: :statuses do
@@ -323,12 +341,18 @@ Rails.application.routes.draw do
     end
   end
 
+  # 名前付きルートweb_pathで/web/(*any)にアクセスできるようにする
+  # webアクセスであることを明示してHomeControllerの動作を変える？
   get '/web/(*any)', to: 'home#index', as: :web
 
+  # 未ログイン時のルート。ざっくり詳細
   get '/about',      to: 'about#show'
+  # 更に詳細
   get '/about/more', to: 'about#more'
+  # 利用規約
   get '/terms',      to: 'about#terms'
 
+  # エントリーポイント
   root 'home#index'
 
   match '*unmatched_route',

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# ロケールに関する共通処理を提供する
 module Localized
   extend ActiveSupport::Concern
 
