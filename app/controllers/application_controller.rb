@@ -17,6 +17,7 @@ class ApplicationController < ActionController::Base
   helper_method :single_user_mode?
   helper_method :use_seamless_external_login?
 
+  # 基本的なエラーコードを返すときのハンドリング
   rescue_from ActionController::RoutingError, with: :not_found
   rescue_from ActiveRecord::RecordNotFound, with: :not_found
   rescue_from ActionController::InvalidAuthenticityToken, with: :unprocessable_entity

@@ -10,8 +10,10 @@ Rails.application.routes.draw do
   # ブラウザ上で送信したメールを確認するためのエンジン
   mount LetterOpenerWeb::Engine, at: 'letter_opener' if Rails.env.development?
 
-  # ログイン済みかつ、アドミンユーザのみのルーティング
-  # https://qiita.com/hirokishirai/items/ca4f9e13610753f74a25
+  # unauthenticated: 非ログイン済みでないユーザの場合は単に利用できなくなる
+  # authenticated: ログイン済みでないユーザの場合は単に利用できなくなる
+  # authenticate: ログイン済みでないユーザの場合は前に認証画面を挟む
+  # コントローラをカスタマイズできないからルーティングで制御してる？
   authenticate :user, lambda { |u| u.admin? } do
     # Sidekiqの管理画面
     mount Sidekiq::Web, at: 'sidekiq', as: :sidekiq
@@ -49,9 +51,12 @@ Rails.application.routes.draw do
   }
 
   # constraints: ルーティングに制約をつけるためのオプション
+  # redirect: リダイレクトというかパスが変わっただけ？
   get '/users/:username', to: redirect('/@%{username}'), constraints: lambda { |req| req.format.nil? || req.format.html? }
 
   # アカウントのホーム
+  # paramオプションでデフォルトパスの:idを:usernameに変える
+  # /users/:user_name/
   resources :accounts, path: 'users', only: [:show], param: :username do
     resources :stream_entries, path: 'updates', only: [:show] do
       member do
@@ -63,6 +68,7 @@ Rails.application.routes.draw do
     post :remote_follow, to: 'remote_follow#create'
 
     resources :statuses, only: [:show] do
+      # ルーティングの追加
       member do
         get :activity
         get :embed
@@ -81,6 +87,7 @@ Rails.application.routes.draw do
 
   resource :inbox, only: [:create], module: :activitypub
 
+  # URL上は/@:username見せるが、実際のパスは/users/:username/show(accounts#show)
   get '/@:username', to: 'accounts#show', as: :short_account
   get '/@:username/with_replies', to: 'accounts#show', as: :short_account_with_replies
   get '/@:username/media', to: 'accounts#show', as: :short_account_media
@@ -209,7 +216,7 @@ Rails.application.routes.draw do
     get '/admin', to: redirect('/admin/reports', status: 302)
   end
 
-  # APIのホーム
+  # API関連
   namespace :api do
     # PubSubHubbub incoming subscriptions(他のインスタンスとのやり取り？)
     resources :subscriptions, only: [:show]
@@ -352,9 +359,12 @@ Rails.application.routes.draw do
   # 利用規約
   get '/terms',      to: 'about#terms'
 
-  # エントリーポイント
+  # エントリーポイント(ユーザホーム)
   root 'home#index'
 
+  # 普通にルーティングが存在しなければエラーになるが
+  # ロギングなどのためにアクションにマッピングする？
+  # 上からマッチするので一番下に書く
   match '*unmatched_route',
         via: :all,
         to: 'application#raise_not_found',

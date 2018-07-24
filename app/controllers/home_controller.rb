@@ -38,7 +38,6 @@ class HomeController < ApplicationController
     end
 
     matches = request.path.match(%r{\A/web/timelines/tag/(?<tag>.+)\z})
-    binding.pry
     redirect_to(matches ? tag_path(CGI.unescape(matches[:tag])) : default_redirect_path)
   end
 
