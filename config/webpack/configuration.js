@@ -5,6 +5,7 @@ const { env } = require('process');
 const { safeLoad } = require('js-yaml');
 const { readFileSync } = require('fs');
 
+// Rails側の設定ファイルも読み込んでるみたいね。パスとったりするため？
 const configPath = resolve('config', 'webpacker.yml');
 const loadersDir = join(__dirname, 'loaders');
 const settings = safeLoad(readFileSync(configPath), 'utf8')[env.NODE_ENV];

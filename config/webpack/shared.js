@@ -9,6 +9,8 @@ const extname = require('path-complete-extname');
 const { env, settings, themes, output, loadersDir } = require('./configuration.js');
 const localePackPaths = require('./generateLocalePacks');
 
+// グロブを使ってソースエントリーパスから再帰的にJavaScriptファイルを登録
+// RailsのWebpackは勝手にやってくれてるっぽい
 const extensionGlob = `**/*{${settings.extensions.join(',')}}*`;
 const entryPath = join(settings.source_path, settings.source_entry_path);
 const packPaths = sync(join(entryPath, extensionGlob));
