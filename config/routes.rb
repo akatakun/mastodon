@@ -41,7 +41,7 @@ Rails.application.routes.draw do
     match '/auth/finish_signup' => 'auth/confirmations#finish_signup', via: [:get, :patch], as: :finish_signup
   end
 
-  # Device周りのパス？
+  # Deviceのパスの設定，usersは普通にユーザページに使いたいから？
   devise_for :users, path: 'auth', controllers: {
     omniauth_callbacks: 'auth/omniauth_callbacks',
     sessions:           'auth/sessions',
@@ -50,13 +50,12 @@ Rails.application.routes.draw do
     confirmations:      'auth/confirmations',
   }
 
-  # constraints: ルーティングに制約をつけるためのオプション
+  # constraints: 動的ルーティングに制約をつける，条件が真のときのみルーティング
   # redirect: リダイレクトというかパスが変わっただけ？
   get '/users/:username', to: redirect('/@%{username}'), constraints: lambda { |req| req.format.nil? || req.format.html? }
 
-  # アカウントのホーム
-  # paramオプションでデフォルトパスの:idを:usernameに変える
-  # /users/:user_name/
+  # アカウントのホーム。paramオプションでデフォルトパスの:idを:usernameに変える
+  # /users/:username(.:format), accounts#show
   resources :accounts, path: 'users', only: [:show], param: :username do
     resources :stream_entries, path: 'updates', only: [:show] do
       member do
@@ -67,6 +66,9 @@ Rails.application.routes.draw do
     get :remote_follow,  to: 'remote_follow#new'
     post :remote_follow, to: 'remote_follow#create'
 
+    # /users/:account_username/statuses/:id(.:format), statuses#show
+    # コントローラはネストしない、複数ステータス出たらどうするんだ？
+    # これは時と場合によりそうだ......
     resources :statuses, only: [:show] do
       # ルーティングの追加
       member do
@@ -75,6 +77,9 @@ Rails.application.routes.draw do
       end
     end
 
+    # 多対多のコントローラはコントローラ名も多対多なるほど
+    # 同名のものがAPIだとちゃんとパスをネストさせているな
+    # 一般人に見えるところはパスは省略するって方針かな？
     resources :followers, only: [:index], controller: :follower_accounts
     resources :following, only: [:index], controller: :following_accounts
     resource :follow, only: [:create], controller: :account_follow
@@ -87,7 +92,8 @@ Rails.application.routes.draw do
 
   resource :inbox, only: [:create], module: :activitypub
 
-  # URL上は/@:username見せるが、実際のパスは/users/:username/show(accounts#show)
+  # URL上は/@:username見せるが、実際のパスは/users/:username/show(accounts#show)。きれいでいいですね
+  # パスにはそれっぽい名前を
   get '/@:username', to: 'accounts#show', as: :short_account
   get '/@:username/with_replies', to: 'accounts#show', as: :short_account_with_replies
   get '/@:username/media', to: 'accounts#show', as: :short_account_media
