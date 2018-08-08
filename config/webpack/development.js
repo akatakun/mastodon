@@ -1,7 +1,17 @@
 // Note: You must restart bin/webpack-dev-server for changes to take effect
+// 共通のWebpack設定。環境ごとの設定はそれぞれのファイルで行う。
 
+// WebpackerではRails Webpackerが吐き出す値(config/)を初期値として使う？が、
+// Mastodonでは全部自分たちで書いているみたい。
+
+// require(#{module_name}): JavaScriptモジュールを読み込む。
+// ブラウザ以外でJavaScriptを読み込む手段として用意された。
+
+// なんかよくわからんけどもとの設定とマージするためのもの？
 const merge = require('webpack-merge');
+// Railsの作る設定は無視し、ここに記載したものを使う。
 const sharedConfig = require('./shared.js');
+// 呼び出し側で特定の値のみを使う場合はこうやって受け取る。
 const { settings, output } = require('./configuration.js');
 
 const watchOptions = {
